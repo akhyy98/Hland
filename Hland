@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Princess Island 3D — Harnoor &amp; Akhil</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;padding:0;width:100vw;height:100dvh;overflow:hidden;background:#38bdf8;font-family:system-ui,-apple-system,sans-serif;color:#fff;touch-action:none}
+#canvas-wrap{position:fixed;inset:0;width:100vw;height:100dvh;z-index:1}
+#canvas-wrap canvas{display:block;width:100%;height:100%}
+.hidden{display:none!important}
+#speech-layer{position:fixed;inset:0;z-index:15;pointer-events:none;overflow:hidden}
+.tag{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px}
+.np{padding:3px 9px;border-radius:99px;font-size:11px;font-weight:800;background:rgba(15,23,42,.72);border:1px solid rgba(255,255,255,.25);white-space:nowrap}
+.sb{max-width:190px;padding:7px 11px;border-radius:14px;background:#fff;color:#1e293b;font-size:11.5px;font-weight:700;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,.28);border:1.5px solid #fbcfe8}
+#top-hud{position:fixed;top:max(10px,env(safe-area-inset-top));left:8px;right:8px;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:4px;pointer-events:none}
+.pill,.mood-box,.ibtn{pointer-events:auto;height:32px;border-radius:99px;background:rgba(15,23,42,.68);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.pill{padding:0 9px;gap:4px}.mood-box{padding:2px;gap:2px}.ibtn{width:30px;font-size:13px}
+.mbtn{width:26px;height:26px;border-radius:99px;border:none;background:transparent;font-size:12px;cursor:pointer}
+.mbtn.active{background:rgba(255,255,255,.28)}
+.rgroup{display:flex;gap:4px}
+.bot-hud{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));left:14px;right:14px;z-index:30;display:flex;align-items:flex-end;justify-content:space-between;pointer-events:none}
+#joy{pointer-events:auto;width:94px;height:94px;border-radius:99px;background:rgba(15,23,42,.4);border:2px solid rgba(255,255,255,.3);position:relative;display:flex;align-items:center;justify-content:center;touch-action:none}
+#knob{width:38px;height:38px;border-radius:99px;background:linear-gradient(135deg,#f472b6,#ec4899);border:2px solid #fff;box-shadow:0 4px 12px rgba(236,72,153,.5);pointer-events:none}
+.acts{pointer-events:auto;display:flex;gap:8px}
+.abtn{height:40px;padding:0 13px;border-radius:99px;border:1.5px solid rgba(255,255,255,.35);color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px;cursor:pointer;background:rgba(15,23,42,.72)}
+.abtn.pink{background:linear-gradient(135deg,#ec4899,#f97316)}
+.abtn.active{background:linear-gradient(135deg,#8b5cf6,#ec4899)}
+#prompt{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:35;padding:9px 16px;border-radius:99px;background:linear-gradient(135deg,#ec4899,#f59e0b);border:2px solid #fff;color:#fff;font-size:12.5px;font-weight:800;white-space:nowrap;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(15,23,42,.76);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:#fff;color:#0f172a;border-radius:22px;padding:20px;width:100%;max-width:420px;max-height:85dvh;overflow-y:auto;position:relative;border:2px solid #fbcfe8;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.xbtn{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:99px;border:none;background:#fce7f3;color:#9d174d;font-weight:800;cursor:pointer}
+.mtitle{margin:4px 0 8px;font-size:19px;font-weight:900;text-align:center;color:#be185d}
+.mbox{background:#fff1f2;border:1px solid #fecdd3;border-radius:14px;padding:13px;font-size:13.5px;line-height:1.5;white-space:pre-line;color:#1e293b}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.mitem{padding:10px;border-radius:12px;border:1.5px solid #fbcfe8;background:#fdf2f8;text-align:left;cursor:pointer;font-size:12px;font-weight:700;color:#831843}
+.mbtn-main{margin-top:12px;width:100%;padding:11px;border-radius:99px;border:none;background:linear-gradient(135deg,#ec4899,#f43f5e);color:#fff;font-weight:800;font-size:13px;cursor:pointer}
+input,textarea{width:100%;padding:8px 10px;border-radius:10px;border:1px solid #cbd5e1;font-size:13px;margin:4px 0 10px;user-select:text;-webkit-user-select:text}
+body.hud-hide .hc,body.hud-hide .bot-hud,body.hud-hide #prompt{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="canvas-wrap"></div>
+<div id="speech-layer">
+  <div id="tag-g" class="tag"><div id="bub-g" class="sb hidden"></div><div class="np">👑 <span id="np-g">Harnoor</span></div></div>
+  <div id="tag-b" class="tag"><div id="bub-b" class="sb hidden"></div><div class="np">🤴 <span id="np-b">Akhil</span></div></div>
+</div>
+<header id="top-hud">
+  <button onclick="swapChar()" class="pill hc"><span id="sw-ico">💃</span><span id="sw-lbl">Harnoor</span><span>⇄</span></button>
+  <div class="mood-box hc">
+    <button id="m-day" onclick="setMood('day')" class="mbtn active">☀️</button>
+    <button id="m-sunset" onclick="setMood('sunset')" class="mbtn">🌅</button>
+    <button id="m-night" onclick="setMood('night')" class="mbtn">🌙</button>
+  </div>
+  <div class="rgroup">
+    <button onclick="openEdit()" class="ibtn hc">✨</button>
+    <button onclick="toggleFS()" class="ibtn hc">⛶</button>
+    <button onclick="document.body.classList.toggle('hud-hide')" class="ibtn">👁️</button>
+  </div>
+</header>
+<button id="prompt" onclick="interact()" class="hidden">✨ Explore</button>
+<div class="bot-hud">
+  <div id="joy"><div id="knob"></div></div>
+  <div class="acts">
+    <button id="btn-dance" onclick="toggleDance()" class="abtn">💃 Dance</button>
+    <button onclick="burstHearts()" class="abtn pink">💖 Hearts</button>
+  </div>
+</div>
+
+<div id="modal-box" class="modal hidden" onclick="if(event.target===this)closeModal()">
+  <div class="card">
+    <button class="xbtn" onclick="closeModal()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+const CFG = {
+  princess: 'Harnoor', prince: 'Akhil',
+  letter: "Happy National Princess Day, my love!\n\nOn this little island built just for you, every castle tower, ocean wave, and flower reminds me how lucky I am to have you in my life.\n\nYou are my favorite adventure, my best friend, and my forever princess.\n\nForever yours,\nAkhil 💖",
+  cafeNote: "Welcome to Café Royale by the Sea! Every latte and macaron here is made specially for Princess Harnoor."
+};
+try {
+  const p = new URLSearchParams(location.search);
+  if(p.get('g')) CFG.princess = p.get('g');
+  if(p.get('b')) CFG.prince = p.get('b');
+  if(p.get('l')) CFG.letter = p.get('l');
+} catch(e){}
+
+const ST = {
+  ctrl: 'girl', mood: 'day', dance: false, activeLm: null,
+  g: { x: -1.6, z: 7.5, ry: 0 }, b: { x: 1.6, z: 7.5, ry: 0 },
+  joy: { x: 0, y: 0 }, keys: {}, target: null,
+  camYaw: 0, camPitch: 0.62, camDist: 24,
+  particles: [], lanterns: []
+};
+
+const LANDMARKS = [
+  { id:'castle', x:0, z:5.8, r:3.6, label:'👑 Enter Royal Castle' },
+  { id:'cafe', x:-17.5, z:-17.5, r:4.0, label:'☕ Visit Oceanside Café' },
+  { id:'chest', x:22.0, z:-3.5, r:3.6, label:'💌 Open Treasure Letter' },
+  { id:'tea', x:11.5, z:-12.0, r:3.4, label:'🫖 Sit at Garden Tea Table' },
+  { id:'fountain', x:-6.5, z:11.0, r:3.2, label:'⛲ Make a Fountain Wish' },
+  { id:'bench', x:-22.0, z:-3.5, r:3.4, label:'🌅 Sit on Sunset Bench' },
+  { id:'pier', x:19.0, z:-19.0, r:3.6, label:'🏮 Release Sky Lantern' }
+];
+
+function say(who, txt) {
+  const el = document.getElementById(who === 'g' ? 'bub-g' : 'bub-b');
+  el.textContent = txt; el.classList.remove('hidden');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.add('hidden'), 3800);
+}
+
+function swapChar() {
+  ST.ctrl = ST.ctrl === 'girl' ? 'boy' : 'girl';
+  document.getElementById('sw-ico').textContent = ST.ctrl === 'girl' ? '💃' : '🤴';
+  document.getElementById('sw-lbl').textContent = ST.ctrl === 'girl' ? CFG.princess : CFG.prince;
+}
+
+function toggleDance() {
+  ST.dance = !ST.dance;
+  document.getElementById('btn-dance').classList.toggle('active', ST.dance);
+  if (ST.dance) { say('g', 'May I have this dance? 💃✨'); say('b', 'Always, my princess! 💖'); burstHearts(); }
+}
+
+function toggleFS() {
+  const d = document.documentElement;
+  if (!document.fullscreenElement) (d.requestFullscreen || d.webkitRequestFullscreen || (()=>{})).call(d);
+  else (document.exitFullscreen || document.webkitExitFullscreen || (()=>{})).call(document);
+}
+
+function closeModal() { document.getElementById('modal-box').classList.add('hidden'); }
+function showModal(html) { document.getElementById('modal-content').innerHTML = html; document.getElementById('modal-box').classList.remove('hidden'); }
+
+function openEdit() {
+  showModal(`
+    <h3 class="mtitle">✨ Customize Island</h3>
+    <label style="font-size:12px;font-weight:700">Princess Name</label><input id="in-g" value="${CFG.princess}">
+    <label style="font-size:12px;font-weight:700">Prince Name</label><input id="in-b" value="${CFG.prince}">
+    <label style="font-size:12px;font-weight:700">Treasure Love Letter</label><textarea id="in-l" rows="4">${CFG.letter}</textarea>
+    <button class="mbtn-main" onclick="saveEdit()">Save & Copy Share Link 🔗</button>
+  `);
+}
+function saveEdit() {
+  CFG.princess = document.getElementById('in-g').value || 'Harnoor';
+  CFG.prince = document.getElementById('in-b').value || 'Akhil';
+  CFG.letter = document.getElementById('in-l').value || CFG.letter;
+  document.getElementById('np-g').textContent = CFG.princess;
+  document.getElementById('np-b').textContent = CFG.prince;
+  swapChar(); swapChar();
+  const u = new URL(location.href);
+  u.searchParams.set('g', CFG.princess); u.searchParams.set('b', CFG.prince); u.searchParams.set('l', CFG.letter);
+  navigator.clipboard?.writeText(u.toString());
+  closeModal(); say('g', 'Island updated & link copied! ✨');
+}
+
+function interact() {
+  const lm = ST.activeLm; if (!lm) return;
+  if (lm.id === 'chest') {
+    showModal(`<h3 class="mtitle">💌 Royal Decree for ${CFG.princess}</h3><div class="mbox">${CFG.letter}</div><button class="mbtn-main" onclick="closeModal();burstHearts()">Keep Forever 💖</button>`);
+  } else if (lm.id === 'castle') {
+    showModal(`<h3 class="mtitle">👑 Grand Castle of ${CFG.princess}</h3><div class="mbox">All hail Princess ${CFG.princess}! Today the entire kingdom celebrates your smile, kindness, and magic.</div><button class="mbtn-main" onclick="closeModal();burstHearts();spawnLantern()">Crown Her & Celebrate 🎆</button>`);
+  } else if (lm.id === 'cafe') {
+    showModal(`<h3 class="mtitle">☕ Café Royale by the Sea</h3><div class="mbox">${CFG.cafeNote}</div><div class="mgrid">
+      <button class="mitem" onclick="orderCafe('🌹 Rose Velvet Latte')">🌹 Rose Latte</button>
+      <button class="mitem" onclick="orderCafe('🍓 Crown Macarons')">🍓 Macarons</button>
+      <button class="mitem" onclick="orderCafe('🍫 Starlight Cocoa')">🍫 Hot Cocoa</button>
+      <button class="mitem" onclick="orderCafe('🥐 Honey Croissant')">🥐 Croissant</button>
+    </div>`);
+  } else if (lm.id === 'tea') {
+    ST.g.x = 10.6; ST.g.z = -12.0; ST.b.x = 12.4; ST.b.z = -12.0;
+    say('g', 'Tea by the cherry blossoms is so peaceful! 🫖🌸'); say('b', 'Anything for you, Harnoor! 💖'); burstHearts();
+  } else if (lm.id === 'fountain') {
+    say('g', 'I made a wish for us! ⛲✨'); say('b', 'My wish already came true! 💕'); burstHearts();
+  } else if (lm.id === 'bench') {
+    ST.g.x = -22.2; ST.g.z = -3.0; ST.b.x = -22.2; ST.b.z = -4.2;
+    say('g', 'Look at those ocean waves! 🌊🌅'); say('b', 'Best view on the island with you ❤️'); burstHearts();
+  } else if (lm.id === 'pier') {
+    spawnLantern(); spawnLantern(); say('g', 'Look at our lanterns flying up! 🏮✨'); burstHearts();
+  }
+}
+function orderCafe(item) { closeModal(); say('b', `Ordered ${item} for ${CFG.princess}! ☕`); say('g', `Yum! Thank you ${CFG.prince}! 🥰`); burstHearts(); }
+
+/* ==========================================================================
+   THREE.JS 3D ENGINE + AUTOMATIC 2.5D FALLBACK
+   ========================================================================== */
+const wrap = document.getElementById('canvas-wrap');
+let use3D = false, scene, camera, renderer, sunLight, hemiLight, oceanMesh, flagMesh, girlMesh, boyMesh, lanternMeshes = [], heartMeshes = [];
+
+function makeChar3D(isGirl) {
+  const g = new THREE.Group();
+  const skin = new THREE.MeshLambertMaterial({ color: 0xfad2b8 });
+  const outfit = new THREE.MeshLambertMaterial({ color: isGirl ? 0xf472b6 : 0x2563eb });
+  const hair = new THREE.MeshLambertMaterial({ color: isGirl ? 0x3b1d14 : 0x1e1b18 });
+  const gold = new THREE.MeshLambertMaterial({ color: 0xfbbf24 });
+
+  const body = new THREE.Mesh(isGirl ? new THREE.ConeGeometry(0.55, 1.35, 16) : new THREE.CylinderGeometry(0.32, 0.36, 1.25, 14), outfit);
+  body.position.y = 0.72; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 16), skin);
+  head.position.y = 1.68; g.add(head);
+  const hCap = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16, 0, Math.PI*2, 0, Math.PI*0.62), hair);
+  hCap.position.y = 1.72; g.add(hCap);
+  if (isGirl) {
+    const backHair = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 0.85, 14), hair);
+    backHair.position.set(0, 1.35, -0.14); g.add(backHair);
+  }
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.17, 0.16, 8), gold);
+  crown.position.y = 2.08; g.add(crown);
+  return g;
+}
+
+function init3D() {
+  if (typeof THREE === 'undefined') return false;
+  try {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x38bdf8);
+    scene.fog = new THREE.FogExp2(0x7dd3fc, 0.0085);
+
+    const w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);
+    camera = new THREE.PerspectiveCamera(46, w / h, 0.5, 220);
+    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'default' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(w, h);
+    wrap.innerHTML = '';
+    wrap.appendChild(renderer.domElement);
+
+    hemiLight = new THREE.HemisphereLight(0xffffff, 0x3b82f6, 0.9);
+    scene.add(hemiLight);
+    sunLight = new THREE.DirectionalLight(0xfffbeb, 1.05);
+    sunLight.position.set(28, 42, 24);
+    scene.add(sunLight);
+
+    // Ocean & Island
+    oceanMesh = new THREE.Mesh(new THREE.CircleGeometry(150, 48), new THREE.MeshLambertMaterial({ color: 0x0284c7 }));
+    oceanMesh.rotation.x = -Math.PI / 2; oceanMesh.position.y = -0.35; scene.add(oceanMesh);
+
+    const sand = new THREE.Mesh(new THREE.CylinderGeometry(31, 33, 0.7, 48), new THREE.MeshLambertMaterial({ color: 0xfde68a }));
+    sand.position.y = -0.05; scene.add(sand);
+
+    const grass = new THREE.Mesh(new THREE.CylinderGeometry(26, 27.5, 0.75, 48), new THREE.MeshLambertMaterial({ color: 0x4ade80 }));
+    grass.position.y = 0.05; scene.add(grass);
+
+    // Stepping stone paths
+    const stoneMat = new THREE.MeshLambertMaterial({ color: 0xe2e8f0 });
+    [[0,6.5],[0,9],[0,11.5],[-4,9],[-8,11],[6,-5],[10,-9],[14,-13],[18,-17],[-6,-6],[-11,-11],[-15,-15],[8,-1],[14,-2],[20,-3],[-8,-1],[-15,-2],[-20,-3]].forEach(([px,pz]) => {
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.14, 12), stoneMat);
+      st.position.set(px, 0.44, pz); scene.add(st);
+    });
+
+    // Central Royal Castle at (0,0)
+    const wallMat = new THREE.MeshLambertMaterial({ color: 0xfff1f2 });
+    const roofMat = new THREE.MeshLambertMaterial({ color: 0xec4899 });
+    const goldMat = new THREE.MeshLambertMaterial({ color: 0xfbbf24 });
+    const keep = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.4, 5.2, 16), wallMat);
+    keep.position.set(0, 3.0, 0); scene.add(keep);
+    const mainRoof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 3.4, 16), roofMat);
+    mainRoof.position.set(0, 7.2, 0); scene.add(mainRoof);
+    flagMesh = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 0.08), goldMat);
+    flagMesh.position.set(0.55, 9.1, 0); scene.add(flagMesh);
+
+    [[-2.7,-2.4],[2.7,-2.4],[-2.7,2.4],[2.7,2.4]].forEach(([tx,tz]) => {
+      const tw = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.05, 4.2, 12), wallMat);
+      tw.position.set(tx, 2.5, tz); scene.add(tw);
+      const tr = new THREE.Mesh(new THREE.ConeGeometry(1.25, 2.2, 12), roofMat);
+      tr.position.set(tx, 5.6, tz); scene.add(tr);
+    });
+    const door = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.5), new THREE.MeshLambertMaterial({ color: 0x9d174d }));
+    door.position.set(0, 1.5, 3.25); scene.add(door);
+
+    // Oceanside Café at (-17.5, -17.5)
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.3, 5.4), new THREE.MeshLambertMaterial({ color: 0xb45309 }));
+    deck.position.set(-17.5, 0.5, -17.5); scene.add(deck);
+    const cafeBody = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.6, 3.2), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    cafeBody.position.set(-17.5, 1.9, -18.2); scene.add(cafeBody);
+    const awning = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.4, 2.2), new THREE.MeshLambertMaterial({ color: 0xf472b6 }));
+    awning.position.set(-17.5, 2.8, -16.4); awning.rotation.x = 0.25; scene.add(awning);
+
+    // Treasure Chest + Wooden & Golden Rope Fence Border at (22, -3.5)
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 1.0), new THREE.MeshLambertMaterial({ color: 0xd97706 }));
+    chest.position.set(22.0, 0.9, -3.5); scene.add(chest);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.52, 12, 1, false, 0, Math.PI), goldMat);
+    lid.rotation.z = Math.PI / 2; lid.position.set(22.0, 1.4, -3.5); scene.add(lid);
+    const postMat = new THREE.MeshLambertMaterial({ color: 0x78350f });
+    const postPts = [];
+    for (let i = 0; i < 9; i++) {
+      const a = -Math.PI * 0.72 + (i / 8) * Math.PI * 1.44;
+      const px = 22.0 + Math.cos(a) * 2.5, pz = -3.5 + Math.sin(a) * 2.5;
+      postPts.push(new THREE.Vector3(px, 1.15, pz));
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 1.1, 8), postMat);
+      post.position.set(px, 0.95, pz); scene.add(post);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 8), goldMat);
+      cap.position.set(px, 1.55, pz); scene.add(cap);
+    }
+    const rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(postPts), 32, 0.05, 6, false), goldMat);
+    scene.add(rope);
+
+    // Garden Tea Table + Chairs + Parasol at (11.5, -12.0)
+    const tbl = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.12, 16), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    tbl.position.set(11.5, 1.15, -12.0); scene.add(tbl);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, 0.75, 10), goldMat);
+    leg.position.set(11.5, 0.78, -12.0); scene.add(leg);
+    const para = new THREE.Mesh(new THREE.ConeGeometry(1.7, 0.75, 14), new THREE.MeshLambertMaterial({ color: 0xf9a8d4 }));
+    para.position.set(11.5, 2.75, -12.0); scene.add(para);
+    [10.2, 12.8].forEach(cx => {
+      const ch = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.48, 12), new THREE.MeshLambertMaterial({ color: 0xf472b6 }));
+      ch.position.set(cx, 0.65, -12.0); scene.add(ch);
+    });
+
+    // Fountain (-6.5, 11), Sunset Bench (-22, -3.5), Pier (19, -19)
+    const ftn = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 0.65, 18), stoneMat);
+    ftn.position.set(-6.5, 0.7, 11.0); scene.add(ftn);
+    const fWater = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.7, 18), new THREE.MeshLambertMaterial({ color: 0x38bdf8 }));
+    fWater.position.set(-6.5, 0.72, 11.0); scene.add(fWater);
+
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.55, 2.4), postMat);
+    bench.position.set(-22.5, 0.65, -3.5); scene.add(bench);
+
+    const pier = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.28, 6.5), postMat);
+    pier.rotation.y = -Math.PI / 4; pier.position.set(20.5, 0.35, -20.5); scene.add(pier);
+
+    // Trees & Flowers
+    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x92400e });
+    const leafColors = [0xf9a8d4, 0x22c55e, 0xfbcfe8, 0x16a34a];
+    [[-12,16],[14,15],[-16,7],[16,8],[-11,-17],[4,-18],[22,10],[-21,11],[7,19],[-4,-19]].forEach(([tx,tz], idx) => {
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.36, 2.6, 8), trunkMat);
+      tr.position.set(tx, 1.6, tz); scene.add(tr);
+      const cr = new THREE.Mesh(new THREE.SphereGeometry(1.65, 12, 12), new THREE.MeshLambertMaterial({ color: leafColors[idx % 4] }));
+      cr.position.set(tx, 3.4, tz); scene.add(cr);
+    });
+
+    girlMesh = makeChar3D(true); scene.add(girlMesh);
+    boyMesh = makeChar3D(false); scene.add(boyMesh);
+
+    renderer.render(scene, camera);
+    return true;
+  } catch (err) {
+    console.error('3D init error:', err);
+    return false;
+  }
+}
+
+use3D = init3D();
+
+// 2.5D Fallback Canvas if Three.js CDN failed
+let fbCanvas, fbCtx;
+if (!use3D) {
+  fbCanvas = document.createElement('canvas');
+  wrap.innerHTML = ''; wrap.appendChild(fbCanvas);
+  fbCtx = fbCanvas.getContext('2d');
+}
+
+function setMood(m) {
+  ST.mood = m;
+  ['day','sunset','night'].forEach(k => document.getElementById('m-'+k).classList.toggle('active', k === m));
+  if (!use3D) return;
+  if (m === 'day') { scene.background.setHex(0x38bdf8); scene.fog.color.setHex(0x7dd3fc); sunLight.color.setHex(0xfffbeb); sunLight.intensity = 1.05; }
+  if (m === 'sunset') { scene.background.setHex(0xfb7185); scene.fog.color.setHex(0xfdba74); sunLight.color.setHex(0xfb923c); sunLight.intensity = 0.95; }
+  if (m === 'night') { scene.background.setHex(0x0f172a); scene.fog.color.setHex(0x1e1b4b); sunLight.color.setHex(0x93c5fd); sunLight.intensity = 0.55; }
+}
+
+function burstHearts() {
+  for (let i = 0; i < 14; i++) {
+    const c = i % 2 === 0 ? ST.g : ST.b;
+    const item = { x: c.x + (Math.random()-0.5)*1.4, y: 2.2, z: c.z + (Math.random()-0.5)*1.4, vy: 1.5 + Math.random(), life: 1.8 };
+    if (use3D) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: i%2?0xec4899:0xf43f5e }));
+      m.position.set(item.x, item.y, item.z); scene.add(m); item.mesh = m;
+    }
+    heartMeshes.push(item);
+  }
+}
+
+function spawnLantern() {
+  const item = { x: 20 + (Math.random()-0.5)*2, y: 1.5, z: -20 + (Math.random()-0.5)*2, life: 10 };
+  if (use3D) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.28, 0.65, 10), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+    m.position.set(item.x, item.y, item.z); scene.add(m); item.mesh = m;
+  }
+  lanternMeshes.push(item);
+}
+
+// Controls: Joystick, Keyboard, Tap-to-Walk & Camera Orbit
+const joyZone = document.getElementById('joy'), knob = document.getElementById('knob');
+let joyId = null;
+joyZone.addEventListener('pointerdown', e => { joyId = e.pointerId; joyZone.setPointerCapture(e.pointerId); moveJoy(e); });
+joyZone.addEventListener('pointermove', e => { if (e.pointerId === joyId) moveJoy(e); });
+joyZone.addEventListener('pointerup', e => { if (e.pointerId === joyId) { joyId = null; ST.joy.x = ST.joy.y = 0; knob.style.transform = 'translate(0,0)'; } });
+function moveJoy(e) {
+  const r = joyZone.getBoundingClientRect(), dx = e.clientX - (r.left + r.width/2), dy = e.clientY - (r.top + r.height/2);
+  const dist = Math.min(32, Math.hypot(dx, dy)), ang = Math.atan2(dy, dx);
+  knob.style.transform = `translate(${Math.cos(ang)*dist}px,${Math.sin(ang)*dist}px)`;
+  ST.joy.x = (Math.cos(ang)*dist)/32; ST.joy.y = (Math.sin(ang)*dist)/32; ST.target = null;
+}
+
+window.addEventListener('keydown', e => { ST.keys[e.key.toLowerCase()] = true; if(e.key.toLowerCase()==='f') toggleFS(); });
+window.addEventListener('keyup', e => { ST.keys[e.key.toLowerCase()] = false; });
+
+let dragCam = false, lastX = 0, lastY = 0;
+wrap.addEventListener('pointerdown', e => { dragCam = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener('pointermove', e => {
+  if (!dragCam) return;
+  ST.camYaw -= (e.clientX - lastX) * 0.007;
+  ST.camPitch = Math.max(0.28, Math.min(1.15, ST.camPitch + (e.clientY - lastY) * 0.005));
+  lastX = e.clientX; lastY = e.clientY;
+});
+window.addEventListener('pointerup', () => dragCam = false);
+wrap.addEventListener('wheel', e => { ST.camDist = Math.max(12, Math.min(44, ST.camDist + e.deltaY * 0.015)); }, { passive: true });
+
+function projectTag(id, x, y, z) {
+  const el = document.getElementById(id);
+  if (use3D) {
+    const v = new THREE.Vector3(x, y, z).project(camera);
+    el.style.left = ((v.x * 0.5 + 0.5) * window.innerWidth) + 'px';
+    el.style.top = ((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px';
+  } else {
+    const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+    el.style.left = (cx + (x - z) * 9) + 'px';
+    el.style.top = (cy + (x + z) * 4.5 - 38) + 'px';
+  }
+}
+
+function clampIsland(c) {
+  const d = Math.hypot(c.x, c.z);
+  if (d < 4.3) { const a = Math.atan2(c.z, c.x); c.x = Math.cos(a)*4.3; c.z = Math.sin(a)*4.3; }
+  if (d > 28.5) { const a = Math.atan2(c.z, c.x); c.x = Math.cos(a)*28.5; c.z = Math.sin(a)*28.5; }
+}
+
+let lastT = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+
+  const lead = ST.ctrl === 'girl' ? ST.g : ST.b;
+  const foll = ST.ctrl === 'girl' ? ST.b : ST.g;
+
+  if (ST.dance) {
+    const t = now * 0.0022;
+    ST.g.x = Math.cos(t) * 1.3; ST.g.z = 7.5 + Math.sin(t) * 1.3; ST.g.ry = -t;
+    ST.b.x = Math.cos(t + Math.PI) * 1.3; ST.b.z = 7.5 + Math.sin(t + Math.PI) * 1.3; ST.b.ry = -t + Math.PI;
+  } else {
+    let mx = ST.joy.x, mz = ST.joy.y;
+    if (ST.keys['w'] || ST.keys['arrowup']) mz -= 1;
+    if (ST.keys['s'] || ST.keys['arrowdown']) mz += 1;
+    if (ST.keys['a'] || ST.keys['arrowleft']) mx -= 1;
+    if (ST.keys['d'] || ST.keys['arrowright']) mx += 1;
+    if (Math.hypot(mx, mz) > 0.05) {
+      const len = Math.hypot(mx, mz); mx /= len; mz /= len;
+      const sin = Math.sin(ST.camYaw), cos = Math.cos(ST.camYaw);
+      const wx = mx * cos + mz * sin, wz = -mx * sin + mz * cos;
+      lead.x += wx * 7.2 * dt; lead.z += wz * 7.2 * dt;
+      lead.ry = Math.atan2(wx, wz);
+      clampIsland(lead);
+    }
+    const fdx = lead.x - foll.x, fdz = lead.z - foll.z, fd = Math.hypot(fdx, fdz);
+    if (fd > 2.2) {
+      foll.x += (fdx / fd) * 6.4 * dt; foll.z += (fdz / fd) * 6.4 * dt;
+      foll.ry = Math.atan2(fdx, fdz);
+      clampIsland(foll);
+    }
+  }
+
+  // Landmark proximity check
+  let near = null;
+  for (const lm of LANDMARKS) {
+    if (Math.hypot(lead.x - lm.x, lead.z - lm.z) < lm.r) { near = lm; break; }
+  }
+  ST.activeLm = near;
+  const pr = document.getElementById('prompt');
+  if (near) { pr.textContent = near.label; pr.classList.remove('hidden'); } else pr.classList.add('hidden');
+
+  // Update hearts & lanterns
+  for (let i = heartMeshes.length - 1; i >= 0; i--) {
+    const h = heartMeshes[i]; h.y += h.vy * dt; h.life -= dt;
+    if (h.mesh) h.mesh.position.y = h.y;
+    if (h.life <= 0) { if (h.mesh) scene.remove(h.mesh); heartMeshes.splice(i, 1); }
+  }
+  for (let i = lanternMeshes.length - 1; i >= 0; i--) {
+    const l = lanternMeshes[i]; l.y += 1.8 * dt; l.life -= dt;
+    if (l.mesh) l.mesh.position.y = l.y;
+    if (l.life <= 0) { if (l.mesh) scene.remove(l.mesh); lanternMeshes.splice(i, 1); }
+  }
+
+  if (use3D) {
+    const w = Math.max(1, window.innerWidth), h = Math.max(1, window.innerHeight);
+    if (renderer.domElement.width !== Math.floor(w * renderer.getPixelRatio())) {
+      camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+    }
+    girlMesh.position.set(ST.g.x, 0.4 + Math.abs(Math.sin(now*0.008))*0.06, ST.g.z); girlMesh.rotation.y = ST.g.ry;
+    boyMesh.position.set(ST.b.x, 0.4 + Math.abs(Math.cos(now*0.008))*0.06, ST.b.z); boyMesh.rotation.y = ST.b.ry;
+    if (flagMesh) flagMesh.rotation.y = Math.sin(now * 0.005) * 0.35;
+
+    const cx = lead.x + Math.sin(ST.camYaw) * Math.cos(ST.camPitch) * ST.camDist;
+    const cy = 1.5 + Math.sin(ST.camPitch) * ST.camDist;
+    const cz = lead.z + Math.cos(ST.camYaw) * Math.cos(ST.camPitch) * ST.camDist;
+    camera.position.lerp(new THREE.Vector3(cx, cy, cz), 0.14);
+    camera.lookAt(lead.x, 1.4, lead.z);
+    renderer.render(scene, camera);
+  } else if (fbCtx) {
+    fbCanvas.width = window.innerWidth; fbCanvas.height = window.innerHeight;
+    const cx = fbCanvas.width / 2, cy = fbCanvas.height / 2;
+    fbCtx.fillStyle = ST.mood === 'night' ? '#0f172a' : ST.mood === 'sunset' ? '#fb7185' : '#0284c7';
+    fbCtx.fillRect(0, 0, fbCanvas.width, fbCanvas.height);
+    fbCtx.fillStyle = '#fde68a'; fbCtx.beginPath(); fbCtx.ellipse(cx, cy, 260, 145, 0, 0, Math.PI*2); fbCtx.fill();
+    fbCtx.fillStyle = '#4ade80'; fbCtx.beginPath(); fbCtx.ellipse(cx, cy, 220, 120, 0, 0, Math.PI*2); fbCtx.fill();
+    // Castle
+    fbCtx.fillStyle = '#fff1f2'; fbCtx.fillRect(cx - 24, cy - 55, 48, 55);
+    fbCtx.fillStyle = '#ec4899'; fbCtx.beginPath(); fbCtx.moveTo(cx-28,cy-55); fbCtx.lineTo(cx,cy-90); fbCtx.lineTo(cx+28,cy-55); fbCtx.fill();
+    // Characters
+    [[ST.g,'#ec4899'],[ST.b,'#2563eb']].forEach(([c,col]) => {
+      const px = cx + (c.x - c.z)*9, py = cy + (c.x + c.z)*4.5;
+      fbCtx.fillStyle = col; fbCtx.beginPath(); fbCtx.arc(px, py-10, 9, 0, Math.PI*2); fbCtx.fill();
+    });
+  }
+
+  projectTag('tag-g', ST.g.x, 2.75, ST.g.z);
+  projectTag('tag-b', ST.b.x, 2.75, ST.b.z);
+}
+requestAnimationFrame(loop);
+setTimeout(() => say('g', `Welcome to our island, ${CFG.prince}! 💖`), 700);
+</script>
+</body>
+</html>
